@@ -30,17 +30,20 @@ canvas{width:100%;height:auto;display:block;border-radius:12px;border:2px solid 
 #tc{display:none;gap:8px;margin-top:8px;max-width:800px}#tc button{flex:1;font-size:20px;padding:12px 6px;touch-action:none}
 @media (pointer:coarse){#tc{display:flex}}
 small{opacity:.85}.note{font-size:12.5px;margin-top:8px;padding:8px 10px;border-left:4px solid var(--bl);background:var(--cd);border-radius:8px}
+#hm{display:none;position:absolute;inset:0;background:rgba(10,16,32,.9);border-radius:12px;padding:10px;overflow:auto}#hm.on{display:flex}
+#hc{margin:auto;max-width:640px;width:100%;background:var(--bg);color:var(--fg);border:2px solid var(--bl);border-radius:12px;padding:12px}#hc h3{margin:0 0 6px;font-size:17px}#hc #hb{width:100%;margin-top:8px;font-weight:700}
+#hm .fn{opacity:1;border-style:solid}#hm .fn span{display:block}.fn.on b::before{content:"✔ "}
 </style></head><body><div id="app">
 <h1>🧬 Bio-Jump 2D: The Molecule Builder</h1>
 
 <div class="bar"><span id="lv"></span><span id="sc"></span><span id="hp"></span><span id="held"></span></div>
-<div class="row"><button id="bL"></button><button id="bS">▶ Start / ↻ New map</button><button id="bM"></button><button id="bP">⏸ P</button></div>
-<div id="cw"><canvas id="c" width="800" height="450"></canvas><div id="qm"><div class="qc" id="qc"></div></div></div>
+<div class="row"><button id="bL"></button><button id="bS">▶ Start / ↻ New map</button><button id="bM"></button><button id="bP">⏸ P</button><button id="bH">❓ H</button></div>
+<div id="cw"><canvas id="c" width="800" height="450"></canvas><div id="qm"><div class="qc" id="qc"></div></div><div id="hm"><div id="hc"><h3 id="ht"></h3><div class="note" id="note"></div><div class="row" id="badRow"></div><div id="fns"></div><button id="hb"></button></div></div></div>
 <div id="tc"><button id="tl">◀</button><button id="tr">▶</button><button id="tu">⬆</button><button id="tt">🤾</button></div>
 <div id="msg"></div>
-<div class="row" id="inv"></div><div class="row" id="badRow"></div>
-<div id="rec"></div><div id="fns"></div>
-<div class="note" id="note"></div>
+<div class="row" id="inv"></div>
+<div id="rec"></div>
+
 </div>
 <script>
 'use strict';
@@ -77,15 +80,15 @@ function setup(){
  $('bL').textContent=bi?'🇪🇸 Solo español':'🇬🇧 English + Español';$('bM').textContent=mute?'🔇':'🔊';
  $('badRow').innerHTML='<b>⚠️ '+B('Avoid','Evita')+':</b> '+Object.entries(BAD).map(([k,e])=>`<span class="chip" style="--c:#c93636"><b>${k}</b> ${N(e)}</span>`).join('');
  $('rec').innerHTML=MOL.map((m,i)=>`<button id="b${i}"><b>${i+1}. ${N(m.n)}</b><br><small>${m.z==='in'?B('Inorganic','Inorgánica'):B('Organic','Orgánica')} · ${m.f}</small><br><code>${m.r.map(rq).join(' / ')}</code> · +${m.p}</button>`).join('');
- $('fns').innerHTML=MOL.map((m,i)=>`<div class="fn" id="f${i}"><b>✔ ${N(m.n)}</b><span>${m.fn.map(f=>N(f)).join(' · ')}</span></div>`).join('');
+ $('fns').innerHTML=MOL.map((m,i)=>`<div class="fn" id="f${i}"><b>${N(m.n)}</b><span>${m.fn.map(f=>N(f)).join(' · ')}</span></div>`).join('');
  MOL.forEach((m,i)=>$('b'+i).onclick=()=>craft(i));
- $('note').innerHTML=B('<b>Keys:</b> ← → / A D move · ↑ / W / Space jump · 1–6 craft · F / ↓ deliver in a zone · P pause. <b>Balls that reach the screen edge explode: −1 life if you are close!</b> <b>CHONPS</b> (blinking, +10 points) are the primary bioelements; Ca, Na, K, Mg, Cl are secondary; Fe is a trace element. Carbohydrates, lipids and proteins have no single formula: the recipes use their key elements.','<b>Teclas:</b> ← → / A D mover · ↑ / W / Espacio saltar · 1–6 fabricar · F / ↓ entregar en una zona · P pausa. <b>Las bolas que lleguen al borde de la pantalla explotan: −1 vida si estás cerca.</b> <b>CHONPS</b> (parpadean, +10 puntos) son los bioelementos primarios; Ca, Na, K, Mg y Cl son secundarios; Fe es un oligoelemento. Glúcidos, lípidos y proteínas no tienen una fórmula única: las recetas usan sus elementos clave.')}
+ $('note').innerHTML=B('<b>Keys:</b> ← → / A D move · ↑ / W / Space jump · 1–6 craft · F / ↓ deliver in a zone · P pause · H help. <b>Balls that reach the screen edge explode: −1 life if you are close!</b> <b>CHONPS</b> (blinking, +10 points) are the primary bioelements; Ca, Na, K, Mg, Cl are secondary; Fe is a trace element. Carbohydrates, lipids and proteins have no single formula: the recipes use their key elements.','<b>Teclas:</b> ← → / A D mover · ↑ / W / Espacio saltar · 1–6 fabricar · F / ↓ entregar en una zona · P pausa · H ayuda. <b>Las bolas que lleguen al borde de la pantalla explotan: −1 vida si estás cerca.</b> <b>CHONPS</b> (parpadean, +10 puntos) son los bioelementos primarios; Ca, Na, K, Mg y Cl son secundarios; Fe es un oligoelemento. Glúcidos, lípidos y proteínas no tienen una fórmula única: las recetas usan sus elementos clave.')}
 function ui(){
  $('lv').innerHTML=B('Level','Nivel')+' <b>'+level+'</b>';$('sc').innerHTML=B('Score','Puntos')+' <b>'+score+'</b>';$('hp').textContent='❤️'.repeat(Math.max(lives,0))||'💔';
  $('held').innerHTML=held?'✋ '+N(held.n):'';
  $('inv').innerHTML=Object.entries(EL).map(([k,e])=>`<span class="chip" style="--c:${e[2]}"><b>${k}</b> ${N(e)}: <b>${inv[k]||0}</b> <small>${['','',B('secondary','secundario'),B('trace','oligo.')][e[3]]}</small></span>`).join('');
  MOL.forEach((m,i)=>{const b=$('b'+i);b.disabled=state!=='play'||done.has(m.id)||!rec(m);b.className=m.z+(done.has(m.id)?' dn':'');$('f'+i).classList.toggle('on',done.has(m.id))})}
-function start(){Object.keys(EL).forEach(k=>inv[k]=0);lives=3;score=0;held=null;done=new Set;items=[];texts=[];fx=[];level=1;keys={};lock=0;pt=0;sp=50;bc=0;bt=6+rnd(7);qm=null;$('qm').classList.remove('on');gen();
+function start(){Object.keys(EL).forEach(k=>inv[k]=0);lives=3;score=0;held=null;done=new Set;items=[];texts=[];fx=[];level=1;keys={};lock=0;pt=0;sp=50;bc=0;bt=6+rnd(7);qm=null;$('qm').classList.remove('on');$('hm').classList.remove('on');gen();
  p={x:380,y:370,w:24,h:36,vx:0,vy:0,on:false,f:1,inv:0};state='play';ch=135;
  msg('Welcome to the Nano-Lab! Catch C, H, O, N, P, S and build 6 biomolecules.','¡Bienvenido al Nano-Lab! Atrapa C, H, O, N, P, S y fabrica 6 biomoléculas.','#33d1ff',4500);ui()}
 function craft(i){if(state!=='play')return;const m=MOL[i];
@@ -135,6 +138,7 @@ function update(){
  if(keys.u&&p.on){p.vy=-12.5;p.on=false;beep(420,.06)}
  if(p.inv>0)p.inv--;if(ch>0)ch--;
  for(let i=items.length-1;i>=0;i--){const it=items[i];it.vy+=.2;it.x+=it.vx;it.y+=it.vy;it.age++;
+  for(const q of plats){if(q.y>400)continue;const qx=Math.max(q.x,Math.min(it.x,q.x+q.w)),qy=Math.max(q.y,Math.min(it.y,q.y+q.h)),dx=it.x-qx,dy=it.y-qy,d2=dx*dx+dy*dy;if(d2<225){if(d2>.0001){const d=Math.sqrt(d2),nx=dx/d,ny=dy/d,vn=it.vx*nx+it.vy*ny;it.x+=nx*(15-d);it.y+=ny*(15-d);if(vn<0){it.vx-=1.5*vn*nx;it.vy-=1.5*vn*ny}if(ny<-.7&&Math.abs(it.vx)<.6)it.vx=(it.vx<0?-1:1)*.6}else{it.y=q.y-15;if(it.vy>0)it.vy*=-.5}}}
   if(!it.en){if(it.x>20&&it.x<W-20)it.en=1}else if(it.x<15||it.x>W-15){boom(it.x<15?15:W-15,it.y,(it.life||it.bad)?'#ff4d6d':EL[it.s][2]);items.splice(i,1);edge(it);continue}
   if(it.y>395){it.y=395;if(it.vy>2)it.b++;it.vy=-Math.max(1.8,Math.abs(it.vy)*.4);it.vx*=.97;if(Math.abs(it.vy)<2){it.vy=0;if(Math.abs(it.vx)<.7)it.vx=it.vx<0?-.8:.8}}
   if(it.age>(it.bad?420:900)||(it.bad&&it.b>3))items.splice(i,1)}
@@ -182,9 +186,9 @@ function drawChar(x,y,f,c,s){ctx.save();ctx.translate(x,y);ctx.scale(s,s);if(f<0
   ctx.fillStyle='#4b2a14';ctx.textAlign='center';ctx.fillText(t,cx,by-h/2+fs*.36);ctx.textAlign='left'}}
 function drawP(){if(p.inv>0&&(p.inv>>2)%2)return;drawChar(p.x,p.y,p.f,ch>0?135-ch:-1,1);
  if(held&&ch<=0){ctx.font='bold 11px system-ui,sans-serif';const t=held.n[0],w=ctx.measureText(t).width+14,x=p.x+12-w/2;ctx.fillStyle=held.z==='in'?'#087fa3':'#bd6508';ctx.fillRect(x,p.y-22,w,16);ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.strokeRect(x,p.y-22,w,16);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(t,p.x+12,p.y-10);ctx.textAlign='left'}}
-function overlay(){ctx.fillStyle='rgba(8,14,30,.9)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#2e5d3b';ctx.fillRect(0,406,W,44);
- const L=state==='start'?['🧬 Bio-Jump 2D: The Molecule Builder',T('Build 6 biomolecules','Fabrica 6 biomoléculas'),'☕🍵 Coffee and Tea!',T('Catch blinking CHONPS · Dodge U, Ra, Pb, Hg…','Atrapa CHONPS que parpadean · Esquiva U, Ra, Pb, Hg…'),T('Press Enter or tap to start','Pulsa Enter o toca para empezar')]
- :state==='win'?[T('🎉 CELL ACTIVATED!','🎉 ¡CÉLULA ACTIVADA!'),T('Score: ','Puntos: ')+score,'☕🍵 Coffee and Tea!',T('You built all 6 biomolecules!','¡Has fabricado las 6 biomoléculas!'),T('Press Enter to play again','Pulsa Enter para jugar otra vez')]
+function overlay(S){ctx.fillStyle='rgba(8,14,30,.9)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#2e5d3b';ctx.fillRect(0,406,W,44);
+ const L=S==='start'?['🧬 Bio-Jump 2D: The Molecule Builder',T('Build 6 biomolecules','Fabrica 6 biomoléculas'),'☕🍵 Coffee and Tea!',T('Catch blinking CHONPS · Dodge U, Ra, Pb, Hg…','Atrapa CHONPS que parpadean · Esquiva U, Ra, Pb, Hg…'),T('Press Enter or tap to start','Pulsa Enter o toca para empezar')]
+ :S==='win'?[T('🎉 CELL ACTIVATED!','🎉 ¡CÉLULA ACTIVADA!'),T('Score: ','Puntos: ')+score,'☕🍵 Coffee and Tea!',T('You built all 6 biomolecules!','¡Has fabricado las 6 biomoléculas!'),T('Press Enter to play again','Pulsa Enter para jugar otra vez')]
  :[T('Game over','Fin del juego'),T('Score: ','Puntos: ')+score,'☕🍵 Coffee and Tea!',T('Si, Al, Pb, Hg, U, Ra… are not bioelements.','Si, Al, Pb, Hg, U, Ra… no son bioelementos.'),T('Press Enter to try again','Pulsa Enter para reintentar')];
  ctx.textAlign='center';L.forEach((s,i)=>{ctx.font=(i?'16px':'bold 26px')+' system-ui,sans-serif';ctx.fillStyle=i===2?'#ffad54':'#fff';ctx.fillText(s,W/2,44+i*30)});ctx.textAlign='left';
  drawChar(W/2-48,262,1,fr,4)}
@@ -200,7 +204,7 @@ function draw(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0f2
  ctx.fillStyle='rgba(255,255,255,.05)';for(let i=0;i<9;i++){ctx.beginPath();ctx.arc(60+i*95,75+(i%3)*60,22+(i%4)*8,0,7);ctx.fill()}
  zone(0,'#33d1ff','INORGANIC','Inorgánica',held&&held.z==='in');zone(W-130,'#ff9f43','ORGANIC','Orgánica',held&&held.z==='out');
  if(p){plats.forEach((q,i)=>brick(q,i>0));items.forEach(drawItem);fx.forEach(q=>{if(q.r){const k=1-q.l/18;ctx.globalAlpha=1-k;ctx.strokeStyle=q.c;ctx.lineWidth=3;ctx.beginPath();ctx.arc(q.x,q.y,BR*k,0,7);ctx.stroke();return}ctx.globalAlpha=Math.min(1,q.l/20);ctx.fillStyle=q.c;ctx.beginPath();ctx.arc(q.x,q.y,3.5,0,7);ctx.fill()});ctx.globalAlpha=1;drawP();ctx.font='bold 15px system-ui,sans-serif';ctx.textAlign='center';texts.forEach(x=>{ctx.fillStyle=x.c;ctx.fillText(x.s,x.x,x.y)});ctx.textAlign='left'}
- if(state==='pause'){ctx.fillStyle='rgba(8,14,30,.72)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 30px system-ui,sans-serif';ctx.fillText('⏸ '+T('PAUSE','PAUSA'),W/2,H/2-10);ctx.font='16px system-ui,sans-serif';ctx.fillText(T('Press P to continue','Pulsa P para continuar'),W/2,H/2+24);ctx.textAlign='left'}else if(state!=='play'&&state!=='quiz')overlay();ctx.fillStyle='rgba(255,255,255,.78)';ctx.font='bold 12px system-ui,sans-serif';ctx.textAlign='left';ctx.fillText("🏫 IES Cañada de las Eras · Miguel Ángel's Biology class · 1º ESO",12,20);hud()}
+ const S=state==='help'?hs:state;if(S==='pause'){ctx.fillStyle='rgba(8,14,30,.72)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 30px system-ui,sans-serif';ctx.fillText('⏸ '+T('PAUSE','PAUSA'),W/2,H/2-10);ctx.font='16px system-ui,sans-serif';ctx.fillText(T('Press P to continue','Pulsa P para continuar'),W/2,H/2+24);ctx.textAlign='left'}else if(S!=='play'&&S!=='quiz')overlay(S);ctx.fillStyle='rgba(255,255,255,.78)';ctx.font='bold 12px system-ui,sans-serif';ctx.textAlign='left';ctx.fillText("🏫 IES Cañada de las Eras · Miguel Ángel's Biology class · 1º ESO",12,20);if(state!=='start'){ctx.fillStyle='#ffd166';ctx.font='bold 16px system-ui,sans-serif';ctx.fillText('⭐ '+T('Score','Puntos')+': '+score,12,42)}hud()}
 function pause(){if(state==='play'){state='pause';keys={}}else if(state==='pause')state='play';ui()}
 function scream(){if(mute)return;try{const a=beep.a||(beep.a=new AudioContext()),t=a.currentTime,o=a.createOscillator(),l=a.createOscillator(),lg=a.createGain(),f1=a.createBiquadFilter(),f2=a.createBiquadFilter(),g=a.createGain();
  o.type='sawtooth';o.frequency.setValueAtTime(480,t);o.frequency.exponentialRampToValueAtTime(880,t+.12);o.frequency.exponentialRampToValueAtTime(240,t+1);
@@ -208,20 +212,25 @@ function scream(){if(mute)return;try{const a=beep.a||(beep.a=new AudioContext())
  f1.type='bandpass';f1.frequency.value=800;f1.Q.value=3;f2.type='bandpass';f2.frequency.value=1250;f2.Q.value=3;
  g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.3,t+.05);g.gain.exponentialRampToValueAtTime(.001,t+1.05);
  o.connect(f1);o.connect(f2);f1.connect(g);f2.connect(g);g.connect(a.destination);o.start(t);l.start(t);o.stop(t+1.1);l.stop(t+1.1)}catch(e){}}
-function loop(){fr++;if(state==='play')update();draw();requestAnimationFrame(loop)}
+const mus=new Audio('CHONPSisthekeysong.mp3');mus.loop=true;mus.volume=.6;let ls='',hs='start';
+function syncMusic(){try{const on=!mute&&!document.hidden&&(state==='start'||state==='pause'||state==='help');if(on){const r=mus.play();if(r&&r.catch)r.catch(()=>{})}else mus.pause()}catch(e){}}
+function openHelp(){hs=state;state='help';keys={};$('ht').innerHTML='ℹ️ '+B('Help','Ayuda');$('hb').innerHTML='▶ '+(hs==='start'?B('Play','Jugar'):B('Continue','Continuar')+' (H)');$('hm').classList.add('on');ui()}
+function closeHelp(){$('hm').classList.remove('on');if(hs==='start')start();else{state=hs;ui()}}
+function helpToggle(){if(state==='help')closeHelp();else if(state!=='quiz')openHelp()}
+function loop(){fr++;if(state!==ls){ls=state;syncMusic()}if(state==='play')update();draw();requestAnimationFrame(loop)}
 const MK={arrowleft:'l',a:'l',arrowright:'r',d:'r',arrowup:'u',w:'u',' ':'u'};
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();
  if(state==='quiz'){if(k>='1'&&k<='3'){const b=$('qc').querySelectorAll('button[data-i]')[k-1];if(b&&!b.disabled)b.click()}else if((k==='enter'||k===' ')&&$('go')){e.preventDefault();cont()}return}
- if(MK[k]||k==='arrowdown')e.preventDefault();if(k==='p'&&(state==='play'||state==='pause')){pause();return}if(state==='pause')return;
- if(state!=='play'){if(k==='enter'||k===' '){e.preventDefault();start()}return}
+ if(MK[k]||k==='arrowdown')e.preventDefault();if(k==='h'){helpToggle();return}if(state==='help'){if(k==='enter'||k===' '){e.preventDefault();closeHelp()}return}if(k==='p'&&(state==='play'||state==='pause')){pause();return}if(state==='pause')return;
+ if(state!=='play'){if(k==='enter'||k===' '){e.preventDefault();state==='start'?openHelp():start()}return}
  if(MK[k])keys[MK[k]]=1;else if(k==='f'||k==='arrowdown')toss();else if(k>='1'&&k<='6')craft(k-1)});
 addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(MK[k])keys[MK[k]]=0});
 addEventListener('click',e=>{if(e.target.tagName==='BUTTON'&&!e.target.closest('#qm'))e.target.blur()});
-cv.addEventListener('pointerdown',()=>{if(state==='pause')pause();else if(state!=='play'&&state!=='quiz')start()});
+cv.addEventListener('pointerdown',()=>{if(state==='pause')pause();else if(state==='start')openHelp();else if(state==='win'||state==='over')start()});
 [['tl','l'],['tr','r'],['tu','u']].forEach(([id,k])=>{const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=1});['pointerup','pointerleave','pointercancel'].forEach(v=>b.addEventListener(v,()=>keys[k]=0))});
 $('tt').addEventListener('pointerdown',e=>{e.preventDefault();toss()});
-$('bL').onclick=()=>{bi=!bi;setup();ui()};$('bS').onclick=start;$('bM').onclick=()=>{mute=!mute;setup()};$('bP').onclick=pause;document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')pause()});
-Object.keys(EL).forEach(k=>inv[k]=0);gen();setup();ui();
+$('bL').onclick=()=>{bi=!bi;setup();ui()};$('bS').onclick=start;$('bM').onclick=()=>{mute=!mute;setup();syncMusic()};$('bP').onclick=pause;document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')pause();syncMusic()});
+Object.keys(EL).forEach(k=>inv[k]=0);gen();setup();ui();addEventListener('pointerdown',syncMusic);addEventListener('keydown',syncMusic);$('hb').onclick=closeHelp;$('bH').onclick=helpToggle;
 msg('Press Enter or tap the game to start.','Pulsa Enter o toca el juego para empezar.');
 loop();
 </script></body></html>
