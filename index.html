@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bio-Jump 2D: The Molecule Builder</title>
+<style>
+:root{--bg:#f4f6fb;--fg:#1b2333;--cd:#fff;--ln:#d5dbe8;--bl:#087fa3;--or:#bd6508;--gd:#17854a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e131f;--fg:#e8ecf6;--cd:#182032;--ln:#2d3752;--bl:#33d1ff;--or:#ffad54;--gd:#51d98b}}
+:root[data-theme="dark"]{--bg:#0e131f;--fg:#e8ecf6;--cd:#182032;--ln:#2d3752;--bl:#33d1ff;--or:#ffad54;--gd:#51d98b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding:8px}
+#app{max-width:820px;margin:0 auto}
+h1{font-size:19px;margin:0}.sub{color:var(--bl);font-weight:700;font-size:13px}
+.bar,.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.bar{font-weight:650}
+button{font:inherit;color:var(--fg);background:var(--cd);border:2px solid var(--ln);border-radius:9px;padding:6px 10px;cursor:pointer}
+#cw{position:relative;max-width:800px}
+canvas{width:100%;height:auto;display:block;border-radius:12px;border:2px solid var(--ln);touch-action:none}
+#qm{display:none;position:absolute;inset:0;background:rgba(10,16,32,.92);border-radius:12px;padding:12px;overflow:auto;color:#fff}
+#qm.on{display:flex}
+.qc{margin:auto;max-width:560px;width:100%;background:#1a233a;border:2px solid #33d1ff;border-radius:12px;padding:14px}
+.qc h3{margin:0 0 8px;color:#ffad54;font-size:17px}
+.qc button{display:block;width:100%;margin:6px 0;text-align:left;background:#24304d;color:#fff;border-color:#3e4c6e}
+#msg{min-height:50px;margin:8px 0;padding:8px 11px;border-radius:9px;background:var(--cd);border:2px solid var(--ln);max-width:800px}
+.chip{padding:3px 8px;border-radius:7px;background:var(--cd);border:1px solid var(--ln);border-left:6px solid var(--c);font-size:13px}
+#rec,#fns{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:7px;margin-top:7px}
+#rec button{text-align:left}#rec .in{border-color:var(--bl)}#rec .out{border-color:var(--or)}
+#rec button:disabled{opacity:.45;cursor:not-allowed}#rec .dn{border-color:var(--gd);opacity:1}
+.fn{padding:7px 9px;border-radius:9px;border:1px dashed var(--ln);background:var(--cd);opacity:.55}
+.fn span{display:none;font-size:12.5px}.fn.on{opacity:1;border-style:solid}.fn.on span{display:block}
+#tc{display:none;gap:8px;margin-top:8px;max-width:800px}#tc button{flex:1;font-size:20px;padding:12px 6px;touch-action:none}
+@media (pointer:coarse){#tc{display:flex}}
+small{opacity:.85}.note{font-size:12.5px;margin-top:8px;padding:8px 10px;border-left:4px solid var(--bl);background:var(--cd);border-radius:8px}
+</style></head><body><div id="app">
+<h1>🧬 Bio-Jump 2D: The Molecule Builder</h1>
+
+<div class="bar"><span id="lv"></span><span id="sc"></span><span id="hp"></span><span id="held"></span></div>
+<div class="row">
+  <button id="bL"></button>
+  <button id="bS">▶ Start / ↻ New map</button>
+  <button id="bI" type="button">🏠 Intro / 🎵</button>
+  <button id="bM"></button>
+  <button id="bP">⏸ P</button>
+  <audio id="bgm" src="CHONPSisthekeysong.mp3" loop preload="auto"></audio>
+</div>
+<div id="cw"><canvas id="c" width="800" height="450"></canvas><div id="qm"><div class="qc" id="qc"></div></div></div>
+<div id="tc"><button id="tl">◀</button><button id="tr">▶</button><button id="tu">⬆</button><button id="tt">🤾</button></div>
+<div id="msg"></div>
+<div class="row" id="inv"></div><div class="row" id="badRow"></div>
+<div id="rec"></div><div id="fns"></div>
+<div class="note" id="note"></div>
+</div>
+<script>
+'use strict';
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),W=800,H=450,$=id=>document.getElementById(id),rnd=n=>Math.floor(Math.random()*n),sh=a=>[...a].sort(()=>Math.random()-.5);
+const bgm=$('bgm');
+const EL={C:['Carbon','Carbono','#3b3b3b',1],H:['Hydrogen','Hidrógeno','#398fe8',1],O:['Oxygen','Oxígeno','#e84a4a',1],N:['Nitrogen','Nitrógeno','#7a5cff',1],P:['Phosphorus','Fósforo','#ff9f1c',1],S:['Sulfur','Azufre','#e0c400',1],
+Ca:['Calcium','Calcio','#9fb4c8',2,'bones, teeth and shells','huesos, dientes y caparazones'],Na:['Sodium','Sodio','#ff8c42',2,'nerve signals','impulsos nerviosos'],K:['Potassium','Potasio','#c77dff',2,'nerve signals','impulsos nerviosos'],Mg:['Magnesium','Magnesio','#2ec4b6',2,'chlorophyll in plants','clorofila de las plantas'],Cl:['Chlorine','Cloro','#9ef01a',2,'stomach acid','jugo gástrico'],Fe:['Iron','Hierro','#b5651d',3,'haemoglobin in blood','hemoglobina de la sangre']};
+const LIGHT={S:1,Ca:1,P:1,Cl:1,Mg:1};
+const BAD={Si:['Silicon','Silicio','Silicon builds rocks, not living cells. It is not a primary bioelement.','El silicio forma rocas, no células. No es un bioelemento primario.'],
+Al:['Aluminium','Aluminio','Aluminium is in rocks and clay. It is not a bioelement.','El aluminio está en rocas y arcillas. No es un bioelemento.'],
+Pb:['Lead','Plomo','Lead is a toxic heavy metal.','El plomo es un metal pesado tóxico.'],
+Hg:['Mercury','Mercurio','Mercury is a toxic heavy metal. It harms the nervous system.','El mercurio es un metal pesado tóxico. Daña el sistema nervioso.'],
+U:['Uranium','Uranio','Uranium is radioactive. Radiation damages DNA.','El uranio es radiactivo. La radiación daña el ADN.'],
+Ra:['Radium','Radio','Radium is radioactive and very dangerous for cells.','El radio es radiactivo y muy peligroso para las células.'],
+Cd:['Cadmium','Cadmio','Cadmium is a toxic heavy metal. It harms kidneys and bones.','El cadmio es un metal pesado tóxico. Daña riñones y huesos.'],
+Au:['Gold','Oro','Gold is an inert noble metal. Cells do not use it.','El oro es un metal noble inerte. Las células no lo usan.']};
+const RAD={U:1,Ra:1};
+const MOL=[
+{id:'water',n:['Water','Agua'],z:'in',p:15,r:[{H:2,O:1}],f:'H₂O',fn:[['Reaction medium','Medio de reacción'],['Thermal control','Control térmico'],['Universal solvent','Disolvente universal']]},
+{id:'salts',n:['Mineral salts','Sales minerales'],z:'in',p:20,r:[{Ca:1,C:1,O:3},{Ca:1,P:1,O:4}],f:'CaCO₃ / Ca-phosphate',fn:[['Bones, teeth and shells','Huesos, dientes y caparazones'],['Chemical balance of cells','Equilibrio químico de las células']]},
+{id:'carbs',n:['Carbohydrates','Glúcidos'],z:'out',p:20,r:[{C:1,H:2,O:1}],f:'(CH₂O)ₙ',fn:[['Immediate energy','Energía inmediata'],['Plant cell wall (cellulose)','Pared celular vegetal (celulosa)']]},
+{id:'lipids',n:['Lipids','Lípidos'],z:'out',p:25,r:[{C:3,H:5,O:1}],f:'lots of C and H',fn:[['Long-term energy store','Reserva de energía a largo plazo'],['Cell membranes','Membranas celulares'],['Thermal insulation','Aislante térmico']]},
+{id:'prot',n:['Proteins','Proteínas'],z:'out',p:30,r:[{C:1,H:1,O:1,N:1,S:1}],f:'amino acids',fn:[['Structure (collagen)','Estructura (colágeno)'],['Transport (haemoglobin)','Transporte (hemoglobina)'],['Enzymes','Enzimas'],['Defence (antibodies)','Defensa (anticuerpos)']]},
+{id:'dna',n:['Nucleic acids','Ácidos nucleicos'],z:'out',p:35,r:[{C:1,H:1,O:1,N:1,P:1}],f:'DNA / RNA',fn:[['Stores genetic information','Almacena la información genética'],['Passes genes to the next generation','Transmite los genes a la descendencia']]}];
+let bi=true,mute=false,state='start',inv={},lives=3,score=0,held=null,done=new Set,items=[],texts=[],level=1,fr=0,keys={},p=null,plats=[],qm=null,qs=[],first=true,up=false,ch=0,lock=0,fx=[],pt=0,sp=50,bc=0,bt=6+rnd(7);
+const B=(en,es)=>bi?`${en} <small>[${es}]</small>`:es,T=(en,es)=>bi?`${en} [${es}]`:es,N=o=>B(o[0],o[1]);
+const rq=r=>Object.entries(r).map(([k,v])=>(v>1?v:'')+k).join('+');
+const rec=m=>m.r.find(r=>Object.entries(r).every(([k,v])=>(inv[k]||0)>=v));
+function msg(en,es,c,hold){const n=performance.now();if(!hold&&n<lock)return;if(hold)lock=n+hold;$('msg').innerHTML=B(en,es);$('msg').style.borderColor=c||''}
+function beep(f,d){if(mute)return;try{const a=beep.a||(beep.a=new AudioContext()),o=a.createOscillator(),g=a.createGain();o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function syncMusic(){
+ if(state==='start'&&!mute){bgm.play().catch(()=>{})}
+ else{bgm.pause();if(state==='play')bgm.currentTime=0}
+}
+const fl=(s,c)=>texts.push({s,x:p.x+12,y:p.y-15,l:40,c});
+function gen(){plats=[{x:0,y:410,w:800,h:40}];[[295,345,4,0],[225,265,3,1],[160,195,2,1]].forEach(([a,b,n,t])=>{for(let c=0;c<n;c++)for(let k=0;k<50;k++){const w=90+rnd(50),x=10+rnd(W-w-20),y=a+rnd(b-a+1),m=x+w/2;
+ if(plats.every(e=>e.y>400||x>e.x+e.w+10||x+w<e.x-10||Math.abs(y-e.y)>=61)&&(!t||plats.some(e=>e.y<400&&e.y>y&&e.y<y+130&&Math.abs(e.x+e.w/2-m)<170))){plats.push({x,y,w,h:16});break}}})}
+function setup(){
+ $('bL').textContent=bi?'🇪🇸 Solo español':'🇬🇧 English + Español';$('bM').textContent=mute?'🔇':'🔊';
+ $('badRow').innerHTML='<b>⚠️ '+B('Avoid','Evita')+':</b> '+Object.entries(BAD).map(([k,e])=>`<span class="chip" style="--c:#c93636"><b>${k}</b> ${N(e)}</span>`).join('');
+ $('rec').innerHTML=MOL.map((m,i)=>`<button id="b${i}"><b>${i+1}. ${N(m.n)}</b><br><small>${m.z==='in'?B('Inorganic','Inorgánica'):B('Organic','Orgánica')} · ${m.f}</small><br><code>${m.r.map(rq).join(' / ')}</code> · +${m.p}</button>`).join('');
+ $('fns').innerHTML=MOL.map((m,i)=>`<div class="fn" id="f${i}"><b>✔ ${N(m.n)}</b><span>${m.fn.map(f=>N(f)).join(' · ')}</span></div>`).join('');
+ MOL.forEach((m,i)=>$('b'+i).onclick=()=>craft(i));$('note').innerHTML=B('<b>Keys:</b> ← → / A D move · ↑ / W / Space jump · 1–6 craft · F / ↓ deliver in a zone · P pause. <b>Balls that reach the screen edge explode: −1 life if you are close!</b> <b>CHONPS</b> (blinking, +10 points) are the primary bioelements; Ca, Na, K, Mg, Cl are secondary; Fe is a trace element. Carbohydrates, lipids and proteins have no single formula: the recipes use their key elements.','<b>Teclas:</b> ← → / A D mover · ↑ / W / Espacio saltar · 1–6 fabricar · F / ↓ entregar en una zona · P pausa. <b>Las bolas que lleguen al borde de la pantalla explotan: −1 vida si estás cerca.</b> <b>CHONPS</b> (parpadean, +10 puntos) son los bioelementos primarios; Ca, Na, K, Mg y Cl son secundarios; Fe es un oligoelemento. Glúcidos, lípidos y proteínas no tienen una fórmula única: las recetas usan sus elementos clave.')}
+function ui(){
+ $('lv').innerHTML=B('Level','Nivel')+' <b>'+level+'</b>';$('sc').innerHTML=B('Score','Puntos')+' <b>'+score+'</b>';$('hp').textContent='❤️'.repeat(Math.max(lives,0))||'💔';
+ $('held').innerHTML=held?'✋ '+N(held.n):'';$('inv').innerHTML=Object.entries(EL).map(([k,e])=>`<span class="chip" style="--c:${e[2]}"><b>${k}</b> ${N(e)}: <b>${inv[k]||0}</b> <small>${['','',B('secondary','secundario'),B('trace','oligo.')][e[3]]}</small></span>`).join('');
+ MOL.forEach((m,i)=>{const b=$('b'+i);b.disabled=state!=='play'\vert{}\vert{}done.has(m.id)\vert{}\vert{}!rec(m);b.className=m.z+(done.has(m.id)?' dn':'');$('f'+i).classList.toggle('on',done.has(m.id))})}
+function start(){Object.keys(EL).forEach(k=>inv[k]=0);lives=3;score=0;held=null;done=new Set;items=[];texts=[];fx=[];level=1;keys={};lock=0;pt=0;sp=50;bc=0;bt=6+rnd(7);qm=null;$('qm').classList.remove('on');gen();
+ p={x:380,y:370,w:24,h:36,vx:0,vy:0,on:false,f:1,inv:0};state='play';ch=135;syncMusic();
+ msg('Welcome to the Nano-Lab! Catch C, H, O, N, P, S and build 6 biomolecules.','¡Bienvenido al Nano-Lab! Atrapa C, H, O, N, P, S y fabrica 6 biomoléculas.','#33d1ff',4500);ui()}
+function goIntro(){state='start';keys={};qm=null;$('qm').classList.remove('on');bgm.currentTime=0;syncMusic();ui()}
+function craft(i){if(state!=='play')return;const m=MOL[i];
+ if(done.has(m.id))return msg('Mission already done!','¡Misión ya completada!','#e8a200',2500);
+ if(held)return msg('Deliver your molecule first!','¡Entrega primero tu molécula!','#e8a200',2500);
+ const r=rec(m);if(!r)return msg('You need: '+m.r.map(rq).join(' or '),'Necesitas: '+m.r.map(rq).join(' o '),'#e84a4a',3000);
+ for(const k in r)inv[k]-=r[k];held=m;beep(660,.12);
+ msg(`${m.n[0]} is ready! Go to the ${m.z==='in'?'LEFT (inorganic)':'RIGHT (organic)'} zone and press F.`,`¡${m.n[1]} lista! Ve a la zona ${m.z==='in'?'IZQUIERDA (inorgánica)':'DERECHA (orgánica)'} y pulsa F.`,'#2fbf71',3000);ui()}
+function toss(){if(state!=='play')return;
+ if(!held)return msg('Craft a molecule first (keys 1–6).','Fabrica primero una molécula (teclas 1–6).','',2500);
+ const c=p.x+12,z=c<130?'in':c>W-130?'out':null;
+ if(!z)return msg('Stand in a zone: left = inorganic, right = organic.','Ponte en una zona: izquierda = inorgánica, derecha = orgánica.','#e8a200',2500);
+ if(z!==held.z){beep(180,.2);return msg(`Wrong zone! Is ${held.n[0]} inorganic or organic?`,`¡Zona incorrecta! ¿${held.n[1]} es inorgánica u orgánica?`,'#e84a4a',3500)}
+ openQuiz(held)}
+function openQuiz(m){state='quiz';keys={};qm=m;first=true;
+ const o=sh(MOL.filter(x=>x!==m)).slice(0,2).map(x=>({f:x.fn[rnd(x.fn.length)],o:x}));
+ qs=sh([{f:m.fn[rnd(m.fn.length)],o:m,ok:1},...o]);
+ $('qc').innerHTML=`<h3>☕ ${B('Bonus question! +10 points on the first try','¡Pregunta bonus! +10 puntos a la primera')}</h3><p>${B('Which is a function of '+m.n[0]+'?','¿Cuál es una función de '+m.n[1]+'?')}</p>`+qs.map((q,i)=>`<button data-i="${i}">${i+1}. ${N(q.f)}</button>`).join('')+'<p id="qx"></p>';
+ $('qc').querySelectorAll('button').forEach(b=>b.onclick=()=>ans(+b.dataset.i,b));$('qm').classList.add('on')}
+function ans(i,b){const q=qs[i];
+ if(!q.ok){first=false;b.disabled=true;b.style.opacity=.5;beep(190,.2);$('qx').innerHTML=B(`No: "${q.f[0]}" is a function of ${q.o.n[0]}. Try again!`,`No: «${q.f[1]}» es una función de ${q.o.n[1]}. ¡Inténtalo otra vez!`);return}
+ const m=qm,bonus=first?10:0,pts=m.p+bonus,old=level;score+=pts;done.add(m.id);held=null;beep(880,.18);
+ level=Math.min(3,1+(done.size>>1));up=level>old;
+ $('qc').innerHTML=`<h3>✔ ${B('Mission complete!','¡Misión completada!')}</h3><p><b>${N(m.n)}</b>: ${m.fn.map(f=>N(f)).join(' · ')}</p><p>+${pts} ${bonus?B('points (with bonus!)','puntos (¡con bonus!)'):B('points','puntos')}</p><button id="go">${B('Continue','Continuar')} ▶</button>`;
+ $('go').onclick=cont;ui()}
+function cont(){$('qm').classList.remove('on');qm=null;const w=done.size===MOL.length;ch=135;state=w?'win':'play';
+ if(w)msg('Cell activated!','¡Célula activada!','#2fbf71',9e5);
+ else if(up)msg(`Level ${level}! Things fall faster.`,`¡Nivel ${level}! Todo cae más rápido.`,'#33d1ff',3000);
+ else ch=0;ui()}
+function spawn(){const bad=Math.random()<.32+level*.03;let s;
+ if(bad){const K=Object.keys(BAD);s=K[rnd(K.length)]}
+ else{const pool=['C','C','H','H','H','O','O','O','O','N','P','S','S','Ca','Na','K','Mg','Cl','Fe'];
+  MOL.forEach(m=>{if(!done.has(m.id)&&!(held&&held.id===m.id)){const r=m.r[rnd(m.r.length)];for(const k in r)if((inv[k]||0)<r[k])pool.push(k,k)}});s=pool[rnd(pool.length)]}
+ const sd=Math.random()<.4,L=Math.random()<.5;items.push(sd?{s,bad,x:L?-18:W+18,y:30+Math.random()*190,vx:(L?1:-1)*(1.6+Math.random()*1.8),vy:-.5+Math.random()*1.2,age:0,b:0,en:0}:{s,bad,x:30+Math.random()*(W-60),y:-18,vx:(Math.random()-.5)*2.6,vy:1+level*.2+Math.random()*.8,age:0,b:0,en:1})}
+const BR=90;
+function boom(x,y,c){fx.push({x,y,vx:0,vy:0,r:1,l:18,c:'#ffd166'});texts.push({s:'💥',x,y,l:35,c:'#fff'});for(let i=0;i<24;i++){const a=Math.random()*6.28,v=1+Math.random()*4;fx.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:30+rnd(20),c:i%3?c:'#fff'})}}
+function edge(it){const ex=it.x<15?15:W-15;if(p.inv>0||Math.hypot(p.x+12-ex,p.y+18-it.y)>BR){beep(150,.2);return}lives--;p.inv=90;ch=135;scream();const nm=it.life?['Heart','Corazón']:(it.bad?BAD:EL)[it.s];
+ msg(`Boom! ${nm[0]} (${it.s}) exploded near you! -1 life.`,`¡Boom! ${nm[1]} (${it.s}) explotó cerca de ti! -1 vida.`,'#e84a4a',4000);fl('-1 ❤️','#ff7070');if(lives<=0)state='over';ui()}
+function update(){
+ pt++;if(--sp<=0){spawn();sp=Math.max(40,Math.round(110-pt/35-level*6))}
+ p.vx=((keys.r?1:0)-(keys.l?1:0))*4.2;if(p.vx)p.f=p.vx>0?1:-1;
+ p.x=Math.max(0,Math.min(W-p.w,p.x+p.vx));p.vy+=.6;p.y+=p.vy;p.on=false;
+ for(const q of plats)if(q.y<400&&p.vy<0&&p.x+p.w>q.x&&p.x<q.x+q.w&&p.y-p.vy>=q.y+q.h-1&&p.y<q.y+q.h){p.y=q.y+q.h;p.vy=1;beep(160,.05);fl('💥','#ffd166');if(++bc>=bt){bc=0;bt=6+rnd(7);const hr=Math.random()<1/3,nd=[];MOL.forEach(m=>{if(!done.has(m.id)){const r=m.r[0];for(const k in r)if(EL[k][3]===1&&(inv[k]||0)<r[k])nd.push(k)}});const s=hr?'❤':nd.length?nd[rnd(nd.length)]:'CHONPS'[rnd(6)];
+ items.push({s,life:hr?1:0,x:p.x+12,y:q.y-18,vx:(Math.random()-.5)*3,vy:-3,age:0,b:0,en:1});
+ msg(hr?'A heart popped out! Catch it!':EL[s][0]+' ('+s+') popped out! Catch it!',hr?'¡Ha salido un corazón! ¡Atrápalo!':'¡Ha salido '+EL[s][1]+' ('+s+')! ¡Atrápalo!','#ff8fa3',3000)}}
+ for(const q of plats)if(p.vy>=0&&p.x+p.w>q.x&&p.x<q.x+q.w&&p.y+p.h-p.vy<=q.y+1&&p.y+p.h>=q.y){p.y=q.y-p.h;p.vy=0;p.on=true}
+ if(keys.u&&p.on){p.vy=-12.5;p.on=false;beep(420,.06)}
+ if(p.inv>0)p.inv--;if(ch>0)ch--;
+ for(let i=items.length-1;i>=0;i--){const it=items[i];it.vy+=.2;it.x+=it.vx;it.y+=it.vy;it.age++;
+  if(!it.en){if(it.x>20&&it.x<W-20)it.en=1}else if(it.x<15||it.x>W-15){boom(it.x<15?15:W-15,it.y,(it.life||it.bad)?'#ff4d6d':EL[it.s][2]);items.splice(i,1);edge(it);continue}
+  for(const q of plats)if(q.y<400&&it.vy>0&&it.x+12>q.x&&it.x-12<q.x+q.w&&it.y+15-it.vy<=q.y+2&&it.y+15>=q.y){it.y=q.y-15;it.vy=-Math.max(2.2,Math.abs(it.vy)*.55);if(Math.abs(it.vx)<.6)it.vx=(Math.random()<.5?-1:1)*.85;break}
+  if(it.y>395){it.y=395;if(it.vy>2)it.b++;it.vy=-Math.max(1.8,Math.abs(it.vy)*.4);it.vx*=.97;if(Math.abs(it.vy)<2){it.vy=0;if(Math.abs(it.vx)<.7)it.vx=it.vx<0?-.8:.8}}
+  if(it.age>(it.bad?420:900)||(it.bad&&it.b>3))items.splice(i,1)}
+ for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++){const a=items[i],b=items[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+  if(d>0&&d<30){const nx=dx/d,ny=dy/d,o=(30-d)/2;a.x-=nx*o;a.y-=ny*o;b.x+=nx*o;b.y+=ny*o;const v=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(v<0){const k=-.94*v;a.vx-=k*nx;a.vy-=k*ny;b.vx+=k*nx;b.vy+=k*ny}}}
+ for(let i=items.length-1;i>=0;i--){const it=items[i],cx=Math.max(p.x,Math.min(it.x,p.x+p.w)),cy=Math.max(p.y,Math.min(it.y,p.y+p.h));
+  if((it.x-cx)**2+(it.y-cy)**2<289){items.splice(i,1);
+   if(it.life){lives=Math.min(7,lives+1);beep(990,.15);fl('+1 ❤️','#ff8fa3');msg('Extra life! +1 ❤️','¡Vida extra! +1 ❤️','#2fbf71',3000)}else if(it.bad){if(p.inv<=0){lives--;p.inv=90;ch=135;scream();const b=BAD[it.s];
+     msg(`${b[0]} (${it.s}): ${b[2]}`,`${b[1]} (${it.s}): ${b[3]}`,'#e84a4a',4500);fl('-1 ❤️','#ff7070');if(lives<=0)state='over'}}
+   else{const e=EL[it.s],pt=e[3]>1?5:10;inv[it.s]++;score+=pt;beep(740,.06);fl('+'+pt+' '+it.s,e[3]>1?'#51d98b':'#ffd166');
+    if(e[3]>1)msg(`${e[0]} (${it.s}): ${e[3]===2?'secondary bioelement':'trace element'} – ${e[4]}`,`${e[1]} (${it.s}): ${e[3]===2?'bioelemento secundario':'oligoelemento'} – ${e[5]}`,'#33d1ff')}
+   ui()}}
+ texts.forEach(x=>{x.y-=.8;x.l--});texts=texts.filter(x=>x.l>0);fx.forEach(q=>{q.x+=q.vx;q.y+=q.vy;q.vy+=q.r?0:.12;q.l--});fx=fx.filter(q=>q.l>0)}
+function brick(q,fl){ctx.fillStyle=fl?'#b5522b':'#7d4e2d';ctx.fillRect(q.x,q.y,q.w,q.h);ctx.fillStyle=fl?'#e58a4b':'#49a05b';ctx.fillRect(q.x,q.y,q.w,4);
+ ctx.strokeStyle='#5c280e';ctx.lineWidth=1;ctx.beginPath();for(let x=q.x;x<q.x+q.w;x+=24){ctx.moveTo(x,q.y+4);ctx.lineTo(x,q.y+q.h)}ctx.moveTo(q.x,q.y+q.h/2+2);ctx.lineTo(q.x+q.w,q.y+q.h/2+2);ctx.stroke()}
+function zone(x,c,a,b,hi){ctx.globalAlpha=hi?.38+Math.sin(fr*.12)*.12:.22;ctx.fillStyle=c;ctx.fillRect(x,330,130,80);ctx.globalAlpha=1;ctx.strokeStyle=c;ctx.lineWidth=hi?3.5:2;ctx.setLineDash([6,4]);ctx.strokeRect(x+1,331,128,78);ctx.setLineDash([]);
+ ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 14px system-ui,sans-serif';ctx.fillText(a,x+65,362);ctx.font='12px system-ui,sans-serif';ctx.fillText(b,x+65,380);
+ if(hi){ctx.font='bold 11px system-ui,sans-serif';ctx.fillStyle='#ffd166';ctx.fillText('▼ F ▼',x+65,345)}ctx.textAlign='left'}
+function drawItem(it){if(it.life){const g=Math.abs(Math.sin(it.age*.2));ctx.beginPath();ctx.arc(it.x,it.y,19+g*3,0,7);ctx.strokeStyle='rgba(255,255,255,'+(.3+.7*g)+')';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(it.x,it.y,15,0,7);ctx.fillStyle='#ff4d6d';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();ctx.font='16px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText('❤️',it.x,it.y+6);ctx.textAlign='left';return}const pr=!it.bad&&EL[it.s][3]===1,bl=pr?Math.abs(Math.sin(it.age*.18)):1;
+ if(pr){ctx.beginPath();ctx.arc(it.x,it.y,19+bl*3,0,7);ctx.strokeStyle='rgba(255,230,120,'+(.25+.75*bl)+')';ctx.lineWidth=3;ctx.stroke()}
+ ctx.globalAlpha=pr?.55+.45*bl:1;ctx.beginPath();ctx.arc(it.x,it.y,15,0,7);ctx.fillStyle=it.bad?(RAD[it.s]?'#2d5a14':'#6b1d3a'):EL[it.s][2];ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=it.bad?(RAD[it.s]?'#b6ff3c':'#ff4d6d'):'#fff';ctx.setLineDash(it.bad?[3,3]:[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+ ctx.fillStyle=!it.bad&&LIGHT[it.s]?'#111':'#fff';ctx.font='bold 13px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText(it.s,it.x,it.y+5);ctx.textAlign='left'}
+function cup(x,y,r,t,a){ctx.save();ctx.translate(x,y);ctx.rotate(r);
+ ctx.fillStyle=t?'#f4f4f4':'#d94f4f';ctx.fillRect(-5,-4,9,9);ctx.fillStyle=t?'#8fcf3a':'#4b2a14';ctx.fillRect(-5,-4,9,2);
+ ctx.strokeStyle=t?'#ccc':'#d94f4f';ctx.lineWidth=1.5;ctx.strokeRect(4,-2,4,5);
+ if(t){ctx.strokeStyle='#555';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(-3,-4);ctx.lineTo(-7,-8);ctx.stroke();ctx.fillStyle='#ffd166';ctx.fillRect(-9,-11,4,4)}
+ ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=1;for(let i=-1;i<2;i++){ctx.beginPath();ctx.moveTo(i*3-1,-6);ctx.quadraticCurveTo(i*3+2+Math.sin(a+i)*2,-10,i*3-1+Math.sin(a+i*2)*2,-14);ctx.stroke()}
+ ctx.restore()}
+function drawChar(x,y,f,c,s){ctx.save();ctx.translate(x,y);ctx.scale(s,s);if(f<0){ctx.translate(24,0);ctx.scale(-1,1)}
+ const sip=c>=0,ph=sip?((c/45)|0)%2:0,k=sip?Math.abs(Math.sin((c%45)/45*Math.PI)):0;
+ ctx.fillStyle='#e52521';ctx.fillRect(3,0,18,7);ctx.fillRect(12,5,14,3);
+ ctx.fillStyle='#f5c08a';ctx.fillRect(4,8,16,9);
+ ctx.fillStyle='#222';if(sip&&k>.5)ctx.fillRect(14,11,4,1);else ctx.fillRect(15,10,3,3);
+ ctx.fillStyle='#5a3418';ctx.fillRect(11,14,9,3);
+ if(sip){ctx.fillStyle='#ff8fa3';ctx.fillRect(5,12,3,2);ctx.fillRect(18,12,2,2)}
+ ctx.fillStyle='#e52521';ctx.fillRect(2,17,20,8);ctx.fillStyle='#2144d6';ctx.fillRect(5,21,14,10);
+ ctx.fillStyle='#f5c08a';ctx.fillRect(0,19,4,6);ctx.fillRect(20,19,4,6);
+ ctx.fillStyle='#5a3418';ctx.fillRect(3,31,8,5);ctx.fillRect(13,31,8,5);
+ if(sip)[[22,22,0],[2,22,1]].forEach(([hx,hy,t])=>{const kk=t===ph?k:0;cup(hx+(17-hx)*kk,hy+(14-hy)*kk,-.55*kk,t,c*.2)});
+ ctx.restore();
+ if(sip){const fs=s>1?20:11,t=ph?'…and Tea! 🍵':'☕ Coffee…',by=y-(s>1?18:28);ctx.font=`bold ${fs}px system-ui,sans-serif`;
+  const w=ctx.measureText(t).width+14,h=fs+10,hx=x+12*s,cx=Math.max(w/2+4,Math.min(W-w/2-4,hx));
+  ctx.fillStyle='#fff';ctx.beginPath();(ctx.roundRect||ctx.rect).call(ctx,cx-w/2,by-h,w,h,8);ctx.fill();
+  ctx.beginPath();ctx.moveTo(hx-5,by);ctx.lineTo(hx+5,by);ctx.lineTo(hx,by+8);ctx.fill();
+  ctx.fillStyle='#4b2a14';ctx.textAlign='center';ctx.fillText(t,cx,by-h/2+fs*.36);ctx.textAlign='left'}}
+function drawP(){if(p.inv>0&&(p.inv>>2)%2)return;drawChar(p.x,p.y,p.f,ch>0?135-ch:-1,1);
+ if(held&&ch<=0){ctx.font='bold 11px system-ui,sans-serif';const t=held.n[0],w=ctx.measureText(t).width+14,x=p.x+12-w/2;ctx.fillStyle=held.z==='in'?'#087fa3':'#bd6508';ctx.fillRect(x,p.y-22,w,16);ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.strokeRect(x,p.y-22,w,16);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(t,p.x+12,p.y-10);ctx.textAlign='left'}}
+function overlay(){ctx.fillStyle='rgba(8,14,30,.9)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#2e5d3b';ctx.fillRect(0,406,W,44);
+ const stLine=(bgm.paused&&!mute)?T('🔊 Tap once for intro song · Tap again or Enter to play','🔊 Toca una vez para la canción · Toca otra vez o Enter para jugar'):T('🎵 Playing CHONPS song! Press Enter or tap to start','🎵 ¡Sonando canción CHONPS! Pulsa Enter o toca para empezar');
+ const L=state==='start'?['🧬 Bio-Jump 2D: The Molecule Builder',T('Build 6 biomolecules','Fabrica 6 biomoléculas'),'☕🍵 Coffee and Tea!',T('Catch blinking CHONPS · Dodge U, Ra, Pb, Hg…','Atrapa CHONPS que parpadean · Esquiva U, Ra, Pb, Hg…'),stLine]
+ :state==='win'?[T('🎉 CELL ACTIVATED!','🎉 ¡CÉLULA ACTIVADA!'),T('Score: ','Puntos: ')+score,'☕🍵 Coffee and Tea!',T('You built all 6 biomolecules!','¡Has fabricado las 6 biomoléculas!'),T('Press Enter to play again','Pulsa Enter para jugar otra vez')]
+ :[T('Game over','Fin del juego'),T('Score: ','Puntos: ')+score,'☕🍵 Coffee and Tea!',T('Si, Al, Pb, Hg, U, Ra… are not bioelements.','Si, Al, Pb, Hg, U, Ra… no son bioelementos.'),T('Press Enter to try again','Pulsa Enter para reintentar')];
+ ctx.textAlign='center';L.forEach((s,i)=>{ctx.font=(i?'16px':'bold 26px')+' system-ui,sans-serif';ctx.fillStyle=i===2?'#ffad54':i===4?'#51d98b':'#fff';ctx.fillText(s,W/2,44+i*30)});ctx.textAlign='left';
+ drawChar(W/2-48,262,1,fr,4)}
+function hud(){if(state!=='play'&&state!=='quiz')return;
+ ctx.font='bold 18px system-ui,sans-serif';
+ const st=`⭐ ${bi?'SCORE / PUNTOS':'PUNTOS'}: ${score}   ·   ${bi?'LV':'NIVEL'} ${level}`;
+ const sw=ctx.measureText(st).width+24;
+ ctx.fillStyle='rgba(8,14,30,.78)';ctx.strokeStyle='#ffd166';ctx.lineWidth=2;
+ ctx.beginPath();(ctx.roundRect||ctx.rect).call(ctx,12,28,sw,32,9);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#ffd166';ctx.textAlign='left';ctx.fillText(st,24,50);
+
+ const L=[T('Lives','Vidas')+' '+(lives>0?'❤️'.repeat(lives):'💔')];
+ if(held)L.push('✋ '+T(held.n[0],held.n[1])+' → '+(held.z==='in'?'◀':'▶'));
+ else{L.push(T('Missing','Falta')+':');
+  MOL.filter(m=>!done.has(m.id)).map(m=>{let d=null,s=9e9;m.r.forEach(q=>{const x=Object.entries(q).map(([k,v])=>[k,Math.max(0,v-(inv[k]||0))]).filter(a=>a[1]),t=x.reduce((a,b)=>a+b[1],0);if(t<s){s=t;d=x}});return{m,d,s}}).sort((a,b)=>a.s-b.s).slice(0,3).forEach(o=>L.push(T(o.m.n[0],o.m.n[1])+': '+(o.s?o.d.map(a=>'+'+(a[1]>1?a[1]:'')+a[0]).join(' '):'✔ OK')))}
+ ctx.font='bold 12px system-ui,sans-serif';const w=Math.max(...L.map(s=>ctx.measureText(s).width))+16,x=W-w-8;
+ ctx.fillStyle='rgba(8,14,30,.6)';ctx.beginPath();(ctx.roundRect||ctx.rect).call(ctx,x,6,w,L.length*16+8,8);ctx.fill();
+ ctx.fillStyle='#fff';ctx.textAlign='left';L.forEach((s,i)=>ctx.fillText(s,x+8,22+i*16))}
+function draw(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0f2a55');g.addColorStop(1,'#2a6f97');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='rgba(255,255,255,.05)';for(let i=0;i<9;i++){ctx.beginPath();ctx.arc(60+i*95,75+(i%3)*60,22+(i%4)*8,0,7);ctx.fill()}
+ zone(0,'#33d1ff','INORGANIC','Inorgánica',held&&held.z==='in');zone(W-130,'#ff9f43','ORGANIC','Orgánica',held&&held.z==='out');
+ if(p){plats.forEach((q,i)=>brick(q,i>0));items.forEach(drawItem);fx.forEach(q=>{if(q.r){const k=1-q.l/18;ctx.globalAlpha=1-k;ctx.strokeStyle=q.c;ctx.lineWidth=3;ctx.beginPath();ctx.arc(q.x,q.y,BR*k,0,7);ctx.stroke();return}ctx.globalAlpha=Math.min(1,q.l/20);ctx.fillStyle=q.c;ctx.beginPath();ctx.arc(q.x,q.y,3.5,0,7);ctx.fill()});ctx.globalAlpha=1;drawP();ctx.font='bold 15px system-ui,sans-serif';ctx.textAlign='center';texts.forEach(x=>{ctx.fillStyle=x.c;ctx.fillText(x.s,x.x,x.y)});ctx.textAlign='left'}
+ if(state==='pause'){ctx.fillStyle='rgba(8,14,30,.72)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 30px system-ui,sans-serif';ctx.fillText('⏸ '+T('PAUSE','PAUSA'),W/2,H/2-10);ctx.font='16px system-ui,sans-serif';ctx.fillText(T('Press P to continue','Pulsa P para continuar'),W/2,H/2+24);ctx.textAlign='left'}else if(state!=='play'&&state!=='quiz')overlay();ctx.fillStyle='rgba(255,255,255,.78)';ctx.font='bold 12px system-ui,sans-serif';ctx.textAlign='left';ctx.fillText("🏫 IES Cañada de las Eras · Miguel Ángel's Biology class · 1º ESO",12,20);hud()}
+function pause(){if(state==='play'){state='pause';keys={}}else if(state==='pause')state='play';ui()}
+function scream(){if(mute)return;try{const a=beep.a||(beep.a=new AudioContext()),t=a.currentTime,o=a.createOscillator(),l=a.createOscillator(),lg=a.createGain(),f1=a.createBiquadFilter(),f2=a.createBiquadFilter(),g=a.createGain();
+ o.type='sawtooth';o.frequency.setValueAtTime(480,t);o.frequency.exponentialRampToValueAtTime(880,t+.12);o.frequency.exponentialRampToValueAtTime(240,t+1);
+ l.frequency.value=8;lg.gain.value=26;l.connect(lg);lg.connect(o.frequency);
+ f1.type='bandpass';f1.frequency.value=800;f1.Q.value=3;f2.type='bandpass';f2.frequency.value=1250;f2.Q.value=3;
+ g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.3,t+.05);g.gain.exponentialRampToValueAtTime(.001,t+1.05);
+ o.connect(f1);o.connect(f2);f1.connect(g);f2.connect(g);g.connect(a.destination);o.start(t);l.start(t);o.stop(t+1.1);l.stop(t+1.1)}catch(e){}}
+function loop(){fr++;if(state==='play')update();draw();requestAnimationFrame(loop)}
+const MK={arrowleft:'l',a:'l',arrowright:'r',d:'r',arrowup:'u',w:'u',' ':'u'};
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+ if(state==='quiz'){if(k>='1'&&k<='3'){const b=$('qc').querySelectorAll('button[data-i]')[k-1];if(b&&!b.disabled)b.click()}else if((k==='enter'\vert{}\vert{}k===' ')&&$('go')){e.preventDefault();cont()}return}
+ if(MK[k]||k==='arrowdown')e.preventDefault();if(k==='p'&&(state==='play'||state==='pause')){pause();return}if(state==='pause')return;
+ if(state!=='play'){if(k==='enter'||k===' '){e.preventDefault();start()}return}
+ if(MK[k])keys[MK[k]]=1;else if(k==='f'||k==='arrowdown')toss();else if(k>='1'&&k<='6')craft(k-1)});
+addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(MK[k])keys[MK[k]]=0});
+addEventListener('click',e=>{if(e.target.tagName==='BUTTON'&&!e.target.closest('#qm'))e.target.blur()});
+cv.addEventListener('pointerdown',()=>{
+ if(state==='pause')pause();
+ else if(state==='start'&&bgm.paused&&!mute){syncMusic();msg('🎵 Playing CHONPS song! Tap again or press Enter to start.','🎵 ¡Sonando canción CHONPS! Toca otra vez o pulsa Enter para empezar.','#33d1ff',3500)}
+ else if(state!=='play'&&state!=='quiz')start();
+});
+[['tl','l'],['tr','r'],['tu','u']].forEach(([id,k])=>{const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=1});['pointerup','pointerleave','pointercancel'].forEach(v=>b.addEventListener(v,()=>keys[k]=0))});
+$('tt').addEventListener('pointerdown',e=>{e.preventDefault();toss()});$('bL').onclick=()=>{bi=!bi;setup();ui();syncMusic()};$('bS').onclick=start;$('bI').onclick=goIntro;$('bM').onclick=()=>{mute=!mute;setup();syncMusic()};$('bP').onclick=pause;document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')pause()});
+
+Object.keys(EL).forEach(k=>inv[k]=0);gen();setup();ui();syncMusic();
+msg('Tap the screen to hear the CHONPS song, or press Enter to start.','Toca la pantalla para escuchar la canción de CHONPS, o pulsa Enter para empezar.');
+loop();
+</script></body></html>
